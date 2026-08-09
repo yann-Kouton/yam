@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, User, Store, Package, LogOut, ChevronRight,
   Phone, FileText, Tag, CheckCircle2, Clock, XCircle, ChevronDown, Download,
+  Apple, Smartphone, Monitor, ArrowUpFromLine, PlusSquare, Check, MoreVertical,
+  Hand, Plus, ArrowLeft
 } from 'lucide-react'
 import { doc, updateDoc } from 'firebase/firestore'
 import {
@@ -49,7 +51,7 @@ function VendorForm({ onClose }) {
   if (vendorStatus !== VENDOR_REQUEST_STATUS.NONE) {
     const statusConfig = {
       pending: { Icon: Clock,         color: '#F59E0B', label: 'Demande en cours d\'examen' },
-      approved: { Icon: CheckCircle2, color: '#2FA761', label: 'Demande approuvée ✓' },
+      approved: { Icon: CheckCircle2, color: '#2FA761', label: 'Demande approuvée' },
       rejected: { Icon: XCircle,      color: '#EF4444', label: 'Demande refusée — réessayez plus tard' },
     }
     const cfg = statusConfig[vendorStatus] || statusConfig.pending
@@ -260,8 +262,8 @@ function DrawerAuthBlock() {
             {loading ? <div className="spinner w-4 h-4 border-white border-t-transparent" /> : 'Envoyer le lien'}
           </motion.button>
         </form>
-        <button onClick={() => setMode('login')} className="text-center text-sm font-semibold" style={{ color: 'var(--primary)' }}>
-          ← Retour à la connexion
+        <button onClick={() => setMode('login')} className="text-center text-sm font-semibold flex items-center justify-center gap-1" style={{ color: 'var(--primary)' }}>
+          <ArrowLeft className="w-4 h-4" /> Retour à la connexion
         </button>
       </div>
     )
@@ -328,22 +330,19 @@ function DrawerAuthBlock() {
 export function HamburgerDrawer({ open, onClose, onNavigate }) {
   const { user, userDoc, logout, showToast } = useApp()
 
-  const { canInstall, isInstalled, install } = usePwaInstall()
+  const [installModal, setInstallModal] = useState(false)
+  const { canInstall, isInstalled, platform, install } = usePwaInstall()
+  const [osTab, setOsTab] = useState(platform)
 
   const handleInstallClick = async () => {
-    // Chrome / Edge, Android et PC : lance directement le téléchargement +
-    // l'installation via la boîte de dialogue native du navigateur, sans
-    // quitter l'app et sans aucune instruction à suivre.
     if (canInstall) {
       const outcome = await install()
       if (outcome === 'accepted') showToast('Application installée !', 'success')
       else if (outcome === 'dismissed') showToast('Installation annulée', 'info')
       return
     }
-    // Navigateur qui ne propose pas d'installation programmatique (ex.
-    // Safari, Firefox) : le téléchargement direct n'est pas possible côté
-    // navigateur, on informe simplement l'utilisateur au lieu d'un tutoriel.
-    showToast('Installation non disponible sur ce navigateur — ouvre ce site avec Chrome ou Edge pour l\'installer.', 'info')
+    setOsTab(platform)
+    setInstallModal(true)
   }
 
   const handleLogout = async () => {
@@ -356,6 +355,25 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
     onNavigate('profil')
     onClose()
   }
+
+  const INSTALL_INSTRUCTIONS = {
+    ios: [
+      { icon: ArrowUpFromLine, title: 'Appuie sur Partager', desc: 'En bas de Safari' },
+      { icon: PlusSquare, title: 'Sur l\'écran d\'accueil', desc: 'Dans la liste qui s\'affiche' },
+      { icon: CheckCircle2, title: 'Appuie sur "Ajouter"', desc: 'En haut à droite' },
+    ],
+    android: [
+      { icon: Smartphone, title: '3 points en haut à droite', desc: 'Dans Chrome / ton navigateur' },
+      { icon: Smartphone, title: 'Ajouter à l\'écran d\'accueil', desc: 'Ou "Installer l\'application" dans le menu' },
+      { icon: CheckCircle2, title: 'Confirmer', desc: 'Appuie sur "Ajouter" / "Installer"' },
+    ],
+    desktop: [
+      { icon: MoreVertical, title: 'Icône d\'installation', desc: 'Dans la barre d\'adresse (Chrome / Edge)' },
+      { icon: Monitor, title: 'Ou menu ⋮ → "Installer Yâmarché"', desc: 'Si l\'icône n\'est pas visible' },
+      { icon: CheckCircle2, title: 'Confirmer l\'installation', desc: 'L\'app s\'ouvre alors dans sa propre fenêtre' },
+    ],
+  }
+  const installInstructions = INSTALL_INSTRUCTIONS[osTab] || INSTALL_INSTRUCTIONS.desktop
 
   const installButton = isInstalled ? null : (
     <button onClick={handleInstallClick}
@@ -468,7 +486,10 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
                     <User className="w-7 h-7" style={{ color: 'var(--muted-fg)' }} />
                   </div>
                   <div>
-                    <p className="font-heading font-bold text-base">Bonjour 👋</p>
+                    <p className="font-heading font-bold text-base flex items-center gap-2">
+                      <Hand className="w-5 h-5" />
+                      Bonjour
+                    </p>
                     <p className="text-xs" style={{ color: 'var(--muted-fg)' }}>
                       Connectez-vous pour continuer
                     </p>
@@ -482,6 +503,69 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
             )}
           </motion.div>
         </>
+      )}
+
+      {/* Modal d'installation */}
+      {installModal && (
+        <motion.div 
+          className="drawer-overlay" 
+          style={{ zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+          onClick={() => setInstallModal(false)}
+        >
+          <motion.div 
+            className="bg-white rounded-3xl w-full max-w-sm overflow-hidden" 
+            onClick={e => e.stopPropagation()}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+              <span className="font-heading font-bold text-base">Installer Yâmarché</span>
+              <button onClick={() => setInstallModal(false)} className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center">
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-5">
+              <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-5">
+                {[
+                  { id: 'desktop', label: 'Ordinateur', icon: Monitor },
+                  { id: 'android', label: 'Android', icon: Smartphone },
+                  { id: 'ios', label: 'iPhone / iPad', icon: Apple },
+                ].map(os => (
+                  <button key={os.id} onClick={() => setOsTab(os.id)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${osTab===os.id ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}>
+                    <os.icon className="w-3.5 h-3.5" />
+                    {os.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col gap-3">
+                {installInstructions.map((step, i) => {
+                  // Ajout de l'icône Plus pour la première étape desktop (remplace ⊕)
+                  const titleWithIcon = osTab === 'desktop' && i === 0 ? (
+                    <span>
+                      {step.title} <Plus className="w-4 h-4 inline" />
+                    </span>
+                  ) : step.title
+                  return (
+                    <div key={i} className="flex items-center bg-gray-50 rounded-2xl p-3 gap-3">
+                      <div className="w-10 h-10 bg-[var(--primary-light)] rounded-xl flex items-center justify-center shrink-0">
+                        <step.icon className="w-5 h-5 text-[var(--primary)]" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold">{titleWithIcon}</p>
+                        <p className="text-xs text-gray-500">{step.desc}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <button onClick={() => setInstallModal(false)} className="btn-primary mt-5 flex items-center justify-center gap-2">
+                <Check className="w-4 h-4" /> OK, j'ai compris !
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
     </AnimatePresence>
   )
