@@ -1,0 +1,113 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function myUid() {
+      return request.auth.uid;
+    }
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(myUid())).data.role;
+    }
+    function isAdmin() {
+      return isSignedIn() && myRole() == 'admin';
+    }
+    function isActive() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(myUid())).data.status == 'active';
+    }
+
+    // ── users/{uid} ──────────────────────────────────────
+    // Chacun lit/écrit son propre profil ; un admin lit/écrit tout le monde.
+    // Un utilisateur ne peut PAS s'auto-attribuer le rôle vendeur/admin ni se
+    // réactiver après suspension : seul un admin change `role` et `status`.
+    match /users/{uid} {
+      allow read: if isSignedIn() && (myUid() == uid || isAdmin());
+      allow create: if isSignedIn() && myUid() == uid
+        && request.resource.data.role == 'client'
+        && request.resource.data.status == 'active';
+      allow update: if isAdmin() || (
+        isSignedIn() && myUid() == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.status == resource.data.status
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ── products/{id} ────────────────────────────────────
+    // Catalogue public en lecture. Écriture réservée au vendeur propriétaire
+    // (statut repasse à "pending" à chaque création/modif) ou à un admin
+    // (qui peut approuver/refuser).
+    match /products/{id} {
+      allow read: if true;
+      allow create: if isActive()
+        && (myRole() == 'vendeur' || isAdmin())
+        && request.resource.data.vendorId == myUid();
+      allow update, delete: if isAdmin()
+        || (isActive() && resource.data.vendorId == myUid());
+    }
+
+    // ── surplusDeals/{id} ────────────────────────────────
+    match /surplusDeals/{id} {
+      allow read: if true;
+      allow create: if isActive()
+        && (myRole() == 'vendeur' || isAdmin())
+        && request.resource.data.vendorId == myUid();
+      allow update, delete: if isAdmin()
+        || (isActive() && resource.data.vendorId == myUid());
+    }
+
+    // ── orders/{id} ──────────────────────────────────────
+    // Créées librement au checkout (client connecté ou invité côté front).
+    // Lues par le client qui a commandé, les vendeurs concernés, ou l'admin.
+    // Seul l'admin modifie le statut d'une commande.
+    match /orders/{id} {
+      allow create: if true;
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == myUid())
+        || (isSignedIn() && myUid() in resource.data.vendorIds);
+      allow update, delete: if isAdmin();
+    }
+
+    // ── reports/{id} (signalements) ──────────────────────
+    // Créés par tout utilisateur connecté et actif ; visibles/traités par
+    // l'admin uniquement (pas par le reporter, pour éviter le harcèlement
+    // inverse d'un vendeur signalé).
+    match /reports/{id} {
+      allow create: if isActive() && request.resource.data.reporterId == myUid();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ── notifications/{id} ────────────────────────────────
+    // audience: 'all' (tout le monde), 'admins' (tous les admins),
+    // 'users' (destinataires précis via recipientIds).
+    // Comme pour "orders", la création reste ouverte pour les notifications
+    // liées à une action (nouvelle commande envoyée par un client non
+    // connecté, etc.) — seule la diffusion à 'all' est réservée aux admins
+    // pour éviter tout spam. La lecture/màj (marquer comme lu) est réservée
+    // au destinataire concerné.
+    match /notifications/{id} {
+      allow create: if
+        (request.resource.data.audience == 'all' && isAdmin())
+        || (request.resource.data.audience == 'admins' && request.resource.data.recipientIds is list)
+        || (request.resource.data.audience == 'users' && request.resource.data.recipientIds is list);
+      allow read: if isSignedIn() && (
+        resource.data.audience == 'all'
+        || (resource.data.audience == 'admins' && isAdmin())
+        || (myUid() in resource.data.recipientIds)
+      );
+      // Seul le champ readBy peut être modifié (marquer comme lu).
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
+        && (
+          resource.data.audience == 'all'
+          || (resource.data.audience == 'admins' && isAdmin())
+          || (myUid() in resource.data.recipientIds)
+        );
+      allow delete: if isAdmin();
+    }
+  }
+}
