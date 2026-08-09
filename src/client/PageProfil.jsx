@@ -30,13 +30,14 @@ export function PageProfil() {
         <div className="card p-5 flex flex-col items-center gap-3 text-center">
           <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white"
             style={{ background: 'linear-gradient(135deg, var(--primary), #f5a623)' }}>
-            {(user.displayName || user.email || '?')[0].toUpperCase()}
+            {(user?.displayName || user?.email || '?')[0].toUpperCase()}
           </div>
           <div>
-            <p className="font-heading font-bold text-lg">{user.displayName || 'Utilisateur'}</p>
+            <p className="font-heading font-bold text-lg">{user?.displayName || 'Utilisateur'}</p>
             <p className="text-sm text-[var(--muted-fg)]">{user.email}</p>
           </div>
         </div>
+
 
         {/* Paramètres */}
         {[
