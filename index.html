@@ -2,13 +2,67 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#E77E23" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Yâmarché" />
-    <title>Yâmarché</title>
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- SEO de base -->
+    <title>Yâmarché – Faites votre marché en ligne à Abidjan | Menus IA selon votre budget</title>
+    <meta name="description" content="Yâmarché, le marché en ligne en Côte d'Ivoire : commandez vos courses auprès de vendeurs proches de chez vous et planifiez votre menu de la semaine selon votre budget grâce à l'IA." />
+    <meta name="keywords" content="marché en ligne Côte d'Ivoire, courses en ligne Abidjan, planification menu budget, livraison courses Abidjan, application marché ivoirien" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://yamarche.vercel.app/" />
+
+    <!-- Ciblage géographique -->
+    <meta name="geo.region" content="CI" />
+    <meta name="geo.placename" content="Abidjan" />
+
+    <!-- Open Graph (partages Facebook/WhatsApp très utilisés en CI) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Yâmarché" />
+    <meta property="og:title" content="Yâmarché – Le marché en ligne, livré chez vous" />
+    <meta property="og:description" content="Commandez vos courses et planifiez votre menu selon votre budget grâce à l'IA." />
+    <meta property="og:url" content="https://yamarche.vercel.app/" />
+    <meta property="og:image" content="https://yamarche.vercel.app/og-image.jpg" />
+    <meta property="og:locale" content="fr_CI" />
+
+    <!-- Twitter/X Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Yâmarché – Le marché en ligne, livré chez vous" />
+    <meta name="twitter:description" content="Commandez vos courses et planifiez votre menu selon votre budget grâce à l'IA." />
+    <meta name="twitter:image" content="https://www.yamarche.ci/og-image.jpg" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Données structurées : aide Google à comprendre le site -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "GroceryStore",
+      "name": "Yâmarché",
+      "url": "https://yamarche.vercel.app/",
+      "description": "Marché en ligne en Côte d'Ivoire avec planification de menu par IA selon le budget.",
+      "areaServed": {
+        "@type": "City",
+        "name": "Abidjan"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "CI"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

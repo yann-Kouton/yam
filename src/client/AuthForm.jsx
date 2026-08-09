@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  GoogleAuthProvider, signInWithPopup,
+  GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail,
 } from 'firebase/auth'
 import { useApp } from '../context/AppContext'
 import { auth } from '../lib/firebase'
 
-/** Formulaire connexion / inscription (email + Google), partagé entre
- * la page Profil et l'écran de connexion requise (AuthGate). */
+/** Formulaire connexion / inscription / mot de passe oublié (email + Google),
+ * partagé entre la page Profil et l'écran de connexion requise (AuthGate). */
 export function AuthForm() {
   const { showToast } = useApp()
-  const [authMode, setAuthMode] = useState('login')
+  const [authMode, setAuthMode] = useState('login') // login | register | reset
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [loading, setLoading] = useState(false)
 
@@ -32,6 +32,20 @@ export function AuthForm() {
     setLoading(false)
   }
 
+  const handleReset = async (e) => {
+    e.preventDefault()
+    if (!form.email) { showToast('Entrez votre email pour réinitialiser', 'error'); return }
+    setLoading(true)
+    try {
+      await sendPasswordResetEmail(auth, form.email)
+      showToast('Email de réinitialisation envoyé !', 'success')
+      setAuthMode('login')
+    } catch (err) {
+      showToast(err.message, 'error')
+    }
+    setLoading(false)
+  }
+
   const handleGoogle = async () => {
     try {
       await signInWithPopup(auth, new GoogleAuthProvider())
@@ -39,6 +53,26 @@ export function AuthForm() {
     } catch (err) {
       showToast(err.message, 'error')
     }
+  }
+
+  if (authMode === 'reset') {
+    return (
+      <div className="flex flex-col gap-5">
+        <p className="text-center text-sm text-[var(--muted-fg)]">
+          Recevez un lien par email pour choisir un nouveau mot de passe.
+        </p>
+        <form onSubmit={handleReset} className="flex flex-col gap-3">
+          <input type="email" className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)]"
+            placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+          <motion.button type="submit" whileTap={{ scale: .97 }} disabled={loading} className="btn-primary disabled:opacity-70">
+            {loading ? <div className="spinner w-4 h-4 border-white border-t-transparent" /> : 'Envoyer le lien'}
+          </motion.button>
+        </form>
+        <button onClick={() => setAuthMode('login')} className="text-center text-sm font-semibold text-[var(--primary)]">
+          ← Retour à la connexion
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -61,6 +95,12 @@ export function AuthForm() {
           placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
         <input type="password" className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)]"
           placeholder="Mot de passe" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+        {authMode === 'login' && (
+          <button type="button" onClick={() => setAuthMode('reset')}
+            className="self-end text-xs font-semibold text-[var(--primary)] -mt-1">
+            Mot de passe oublié ?
+          </button>
+        )}
         <motion.button type="submit" whileTap={{ scale: .97 }} disabled={loading} className="btn-primary disabled:opacity-70">
           {loading ? <div className="spinner w-4 h-4 border-white border-t-transparent" /> : authMode === 'login' ? 'Se connecter' : "S'inscrire"}
         </motion.button>

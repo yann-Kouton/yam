@@ -8,12 +8,13 @@ import {
 import { doc, updateDoc } from 'firebase/firestore'
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  GoogleAuthProvider, signInWithPopup,
+  GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail,
 } from 'firebase/auth'
 import { useApp } from '../context/AppContext'
 import { VENDOR_REQUEST_STATUS } from '../constants'
 import { auth, db } from '../lib/firebase'
 import { notifyAdmins } from '../lib/notifications'
+import { usePwaInstall } from '../hooks/usePwaInstall'
 import { StatusPill } from './StatusPill'
 
 // ── Formulaire Devenir Vendeur ────────────────────────────
@@ -209,7 +210,7 @@ function MesCommandes() {
 // ── Mini auth dans le drawer ─────────────────────────────
 function DrawerAuthBlock() {
   const { showToast } = useApp()
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState('login') // login | register | reset
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [loading, setLoading] = useState(false)
 
@@ -228,11 +229,43 @@ function DrawerAuthBlock() {
     setLoading(false)
   }
 
+  const handleReset = async (e) => {
+    e.preventDefault()
+    if (!form.email) { showToast('Entrez votre email pour réinitialiser', 'error'); return }
+    setLoading(true)
+    try {
+      await sendPasswordResetEmail(auth, form.email)
+      showToast('Email de réinitialisation envoyé !', 'success')
+      setMode('login')
+    } catch (err) { showToast(err.message, 'error') }
+    setLoading(false)
+  }
+
   const handleGoogle = async () => {
     try {
       await signInWithPopup(auth, new GoogleAuthProvider())
       showToast('Connecté avec Google !', 'success')
     } catch (err) { showToast(err.message, 'error') }
+  }
+
+  if (mode === 'reset') {
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <p className="text-center text-sm font-semibold" style={{ color: 'var(--muted-fg)' }}>
+          Recevez un lien par email pour choisir un nouveau mot de passe
+        </p>
+        <form onSubmit={handleReset} className="flex flex-col gap-2.5">
+          <input type="email" className="border rounded-xl px-4 py-2.5 text-sm outline-none" style={{ borderColor: 'var(--border)' }}
+            placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+          <motion.button type="submit" whileTap={{ scale: 0.97 }} disabled={loading} className="btn-primary disabled:opacity-70">
+            {loading ? <div className="spinner w-4 h-4 border-white border-t-transparent" /> : 'Envoyer le lien'}
+          </motion.button>
+        </form>
+        <button onClick={() => setMode('login')} className="text-center text-sm font-semibold" style={{ color: 'var(--primary)' }}>
+          ← Retour à la connexion
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -260,6 +293,12 @@ function DrawerAuthBlock() {
           placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
         <input type="password" className="border rounded-xl px-4 py-2.5 text-sm outline-none" style={{ borderColor: 'var(--border)' }}
           placeholder="Mot de passe" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+        {mode === 'login' && (
+          <button type="button" onClick={() => setMode('reset')}
+            className="self-end text-xs font-semibold -mt-1" style={{ color: 'var(--primary)' }}>
+            Mot de passe oublié ?
+          </button>
+        )}
         <motion.button type="submit" whileTap={{ scale: 0.97 }} disabled={loading} className="btn-primary disabled:opacity-70">
           {loading ? <div className="spinner w-4 h-4 border-white border-t-transparent" /> : mode === 'login' ? 'Se connecter' : "S'inscrire"}
         </motion.button>
@@ -292,6 +331,20 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
 
   const [installModal, setInstallModal] = useState(false)
   const [osTab, setOsTab] = useState('ios')
+  const { canInstall, isInstalled, install } = usePwaInstall()
+
+  const handleInstallClick = async () => {
+    // Android / PC (Chrome, Edge...) : téléchargement + installation directe
+    // via la boîte de dialogue native du navigateur.
+    if (canInstall) {
+      const outcome = await install()
+      if (outcome === 'accepted') showToast('Application installée !', 'success')
+      return
+    }
+    // iOS Safari : pas d'installation programmatique possible, on affiche
+    // la procédure manuelle "Ajouter à l'écran d'accueil".
+    setInstallModal(true)
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -314,14 +367,16 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
     { icon: CheckCircle2, title:'Confirmer',  desc:'Appuie sur "Ajouter"' },
   ]
 
-  const installButton = (
-    <button onClick={() => setInstallModal(true)}
+  const installButton = isInstalled ? null : (
+    <button onClick={handleInstallClick}
       className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-2xl hover:bg-[var(--muted)] transition-colors mt-2">
       <Download className="w-5 h-5" style={{ color: 'var(--secondary)' }} />
       <span className="flex-1 font-semibold text-sm">Installer l'application</span>
       <ChevronRight className="w-4 h-4" style={{ color: 'var(--border)' }} />
     </button>
   )
+
+  const displayUsername = userDoc?.displayName || user?.displayName || 'Utilisateur'
 
   return (
     <AnimatePresence>
@@ -363,11 +418,11 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
                   style={{ borderBottom: '1px solid var(--border)' }}>
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0"
                     style={{ background: 'linear-gradient(135deg, var(--primary), #f5a623)' }}>
-                    {(user.displayName || user.email || '?')[0].toUpperCase()}
+                    {displayUsername[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-heading font-bold text-base truncate">
-                      {user.displayName || 'Utilisateur'}
+                      {displayUsername}
                     </p>
                     <p className="text-xs truncate" style={{ color: 'var(--muted-fg)' }}>
                       {user.email}

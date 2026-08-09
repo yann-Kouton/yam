@@ -4,19 +4,38 @@ import {
   Apple, Smartphone, ArrowUpFromLine, PlusSquare, CheckCircle2, Wrench, Check
 } from 'lucide-react'
 import { fadeIn, scaleIn } from '../constants'
+import { usePwaInstall } from '../hooks/usePwaInstall'
+import { useApp } from '../context/AppContext'
 
 export function PwaBanner() {
   const [visible, setVisible] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [osTab, setOsTab] = useState('ios')
+  const { canInstall, isInstalled, install } = usePwaInstall()
+  const { showToast } = useApp() || {}
 
   useEffect(() => {
-    const isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone
-    if (isInstalled) return
+    if (isInstalled) { setVisible(false); return }
     setOsTab(/android/i.test(navigator.userAgent) ? 'android' : 'ios')
     const t = setTimeout(() => setVisible(true), 3000)
     return () => clearTimeout(t)
-  }, [])
+  }, [isInstalled])
+
+  const handleInstallClick = async () => {
+    // Chrome / Edge, Android et PC : téléchargement + installation directe,
+    // sans quitter l'app, via la boîte de dialogue native du navigateur.
+    if (canInstall) {
+      const outcome = await install()
+      if (outcome === 'accepted') {
+        showToast?.('Application installée !', 'success')
+        setVisible(false)
+      }
+      return
+    }
+    // iOS Safari (et navigateurs qui ne supportent pas l'install native) :
+    // seule la procédure manuelle "Ajouter à l'écran d'accueil" existe.
+    setModalOpen(true)
+  }
 
   if (!visible) return null
 
@@ -30,7 +49,7 @@ export function PwaBanner() {
               <span className="font-heading font-black text-white text-sm flex-1">
                 <span className="text-[var(--primary)]">Yâ</span>marché
               </span>
-              <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 bg-[var(--primary)] text-white font-heading font-bold text-xs px-4 py-2 rounded-full">
+              <button onClick={handleInstallClick} className="flex items-center gap-2 bg-[var(--primary)] text-white font-heading font-bold text-xs px-4 py-2 rounded-full">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 Installer
               </button>

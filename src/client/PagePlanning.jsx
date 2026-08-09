@@ -111,7 +111,7 @@ export function PagePlanning() {
           className="btn-primary btn-secondary py-4 rounded-2xl disabled:opacity-70">
           {generating ? <><div className="spinner w-5 h-5 border-white border-t-transparent" />Génération en cours...</> : <>
             <Wand2 className="w-5 h-5" />
-            Générer mon menu africain
+            Générer mon menu
           </>}
         </motion.button>
       </div>
