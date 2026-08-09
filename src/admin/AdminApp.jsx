@@ -5,6 +5,7 @@ import { LayoutDashboard, Package, AlertTriangle, Users, User, Megaphone } from 
 import { useApp } from '../context/AppContext'
 import { useFirestoreCollection } from '../hooks/useFirestoreCollection'
 import { BottomNav } from '../ui/BottomNav'
+import { AppHeader } from '../ui/AppHeader'
 import { Toast } from '../ui/Toast'
 import { RoleProfile } from '../ui/RoleProfile'
 import { PRODUCT_STATUS, REPORT_STATUS } from '../constants'
@@ -41,6 +42,10 @@ export function AdminApp() {
 
   return (
     <div className="app-shell">
+      {/* Navbar supérieure — logo + fenêtre de notifications (signalements,
+          demandes vendeur, nouvelles commandes...) */}
+      <AppHeader />
+
       <div className="page-content">
         <AnimatePresence mode="wait">
           <div key={page}>{pageComponents[page]}</div>

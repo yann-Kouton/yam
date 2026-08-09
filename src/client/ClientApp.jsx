@@ -3,9 +3,8 @@ import { AnimatePresence } from 'framer-motion'
 import { Home, Store, CalendarDays, Tag } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { BottomNav } from '../ui/BottomNav'
-import { TopNavBar } from '../ui/TopNavBar'
+import { AppHeader } from '../ui/AppHeader'
 import { HamburgerDrawer } from '../ui/HamburgerDrawer'
-import { PwaBanner } from '../ui/PwaBanner'
 import { Toast } from '../ui/Toast'
 import { PageAccueil } from './PageAccueil'
 import { PageMarche } from './PageMarche'
@@ -44,10 +43,8 @@ export function ClientApp() {
 
   return (
     <div className="app-shell">
-      <PwaBanner />
-
       {/* Navbar supérieure — en flux (flex-shrink-0) */}
-      <TopNavBar
+      <AppHeader
         onMenuOpen={() => setDrawerOpen(true)}
         onCartOpen={() => setPage('panier')}
         cartCount={cartCount}

@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion'
 import { LayoutDashboard, Package, Leaf, ShoppingBag, User } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { BottomNav } from '../ui/BottomNav'
+import { AppHeader } from '../ui/AppHeader'
 import { Toast } from '../ui/Toast'
 import { RoleProfile } from '../ui/RoleProfile'
 import { VendorDashboard } from './VendorDashboard'
@@ -32,6 +33,9 @@ export function VendorApp() {
 
   return (
     <div className="app-shell">
+      {/* Navbar supérieure — logo + notifications (commandes, produits modérés...) */}
+      <AppHeader />
+
       <div className="page-content">
         <AnimatePresence mode="wait">
           <div key={page}>{pageComponents[page]}</div>

@@ -1,4 +1,4 @@
-import { Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, AlertTriangle, Package } from 'lucide-react'
 
 const CONFIG = {
   pending:   { label: 'En attente',  icon: Clock,        cls: 'bg-amber-50 text-amber-600' },
@@ -9,6 +9,11 @@ const CONFIG = {
   open:      { label: 'Ouvert',      icon: AlertTriangle,cls: 'bg-amber-50 text-amber-600' },
   resolved:  { label: 'Résolu',      icon: CheckCircle2, cls: 'bg-[var(--secondary-light)] text-[var(--secondary)]' },
   none:      { label: 'Aucune',      icon: Clock,        cls: 'bg-gray-100 text-gray-400' },
+  // Commandes
+  confirmed: { label: 'Confirmée',   icon: CheckCircle2, cls: 'bg-blue-50 text-blue-600' },
+  ready:     { label: 'Prête',       icon: Package,       cls: 'bg-[var(--secondary-light)] text-[var(--secondary)]' },
+  delivered: { label: 'Livrée',      icon: CheckCircle2, cls: 'bg-[var(--secondary-light)] text-[var(--secondary)]' },
+  cancelled: { label: 'Annulée',     icon: XCircle,      cls: 'bg-red-50 text-red-500' },
 }
 
 export function StatusPill({ status }) {

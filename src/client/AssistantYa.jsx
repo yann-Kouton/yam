@@ -52,7 +52,7 @@ export function AssistantYa() {
         )}
       </motion.button>
 
-      {/* Panel — z-[150] : au-dessus de la TopNavBar (100) et de la BottomNav
+      {/* Panel — z-[150] : au-dessus de l'AppHeader (100) et de la BottomNav
           flottante (90), qui masquaient le champ de saisie tout en bas. */}
       <AnimatePresence>
         {open && (

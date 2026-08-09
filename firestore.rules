@@ -63,13 +63,21 @@ service cloud.firestore {
     // ── orders/{id} ──────────────────────────────────────
     // Créées librement au checkout (client connecté ou invité côté front).
     // Lues par le client qui a commandé, les vendeurs concernés, ou l'admin.
-    // Seul l'admin modifie le statut d'une commande.
+    // Un vendeur concerné par la commande peut faire évoluer son statut
+    // (confirmée / prête / livrée / annulée) pour déclencher la notification
+    // du client, mais ne peut modifier aucun autre champ (montants, items,
+    // adresse...). L'admin garde un accès complet.
     match /orders/{id} {
       allow create: if true;
       allow read: if isAdmin()
         || (isSignedIn() && resource.data.userId == myUid())
         || (isSignedIn() && myUid() in resource.data.vendorIds);
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn() && myUid() in resource.data.vendorIds
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'statusUpdatedAt', 'statusUpdatedBy'])
+      );
+      allow delete: if isAdmin();
     }
 
     // ── reports/{id} (signalements) ──────────────────────

@@ -27,6 +27,18 @@ export const USER_STATUS = { ACTIVE: 'active', SUSPENDED: 'suspended' }
 export const PRODUCT_STATUS = { PENDING: 'pending', APPROVED: 'approved', REJECTED: 'rejected' }
 export const VENDOR_REQUEST_STATUS = { NONE: 'none', PENDING: 'pending', APPROVED: 'approved', REJECTED: 'rejected' }
 export const REPORT_STATUS = { OPEN: 'open', RESOLVED: 'resolved' }
+export const ORDER_STATUS = {
+  PENDING:   'pending',
+  CONFIRMED: 'confirmed',
+  READY:     'ready',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled',
+}
+// Ordre logique de progression d'une commande, utilisé côté vendeur pour
+// proposer l'étape suivante.
+export const ORDER_STATUS_FLOW = [
+  ORDER_STATUS.PENDING, ORDER_STATUS.CONFIRMED, ORDER_STATUS.READY, ORDER_STATUS.DELIVERED,
+]
 
 // ── ANIMATIONS FRAMER MOTION ─────────────────────────────
 export const fadeUp  = { initial:{opacity:0,y:24}, animate:{opacity:1,y:0}, exit:{opacity:0,y:-16}, transition:{duration:.35,ease:[.34,1.1,.64,1]} }
