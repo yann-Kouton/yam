@@ -331,18 +331,14 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
   const { canInstall, isInstalled, install } = usePwaInstall()
 
   const handleInstallClick = async () => {
-    // Chrome / Edge, Android et PC : lance directement le téléchargement +
-    // l'installation via la boîte de dialogue native du navigateur, sans
-    // quitter l'app et sans aucune instruction à suivre.
+    
     if (canInstall) {
       const outcome = await install()
       if (outcome === 'accepted') showToast('Application installée !', 'success')
       else if (outcome === 'dismissed') showToast('Installation annulée', 'info')
       return
     }
-    // Navigateur qui ne propose pas d'installation programmatique (ex.
-    // Safari, Firefox) : le téléchargement direct n'est pas possible côté
-    // navigateur, on informe simplement l'utilisateur au lieu d'un tutoriel.
+    
     showToast('Installation non disponible sur ce navigateur — ouvre ce site avec Chrome ou Edge pour l\'installer.', 'info')
   }
 
@@ -430,8 +426,7 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
                     <ChevronRight className="w-4 h-4" style={{ color: 'var(--border)' }} />
                   </button>
 
-                  {/* Bouton installer */}
-                  {installButton}
+                  
 
                   {/* Devenir vendeur */}
                   <div className="px-1">
@@ -447,6 +442,9 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
                     <MesCommandes />
                   </div>
                 </div>
+
+                {/* Bouton installer */}
+                  {installButton}
 
                 {/* Déconnexion */}
                 <div className="mt-auto px-5 py-5" style={{ borderTop: '1px solid var(--border)' }}>
@@ -468,7 +466,7 @@ export function HamburgerDrawer({ open, onClose, onNavigate }) {
                     <User className="w-7 h-7" style={{ color: 'var(--muted-fg)' }} />
                   </div>
                   <div>
-                    <p className="font-heading font-bold text-base">Bonjour 👋</p>
+                    <p className="font-heading font-bold text-base">Bonjour</p>
                     <p className="text-xs" style={{ color: 'var(--muted-fg)' }}>
                       Connectez-vous pour continuer
                     </p>

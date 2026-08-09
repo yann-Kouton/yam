@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+// updateProfile a été ajouté ici
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail,
+  GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, updateProfile
 } from 'firebase/auth'
+// doc et setDoc ont été ajoutés ici pour Firestore
+import { doc, setDoc } from 'firebase/firestore'
 import { useApp } from '../context/AppContext'
-import { auth } from '../lib/firebase'
+import { auth, db } from '../lib/firebase'
+// Assurez-vous que ces constantes existent bien dans votre fichier constants.js
+import { ROLES, USER_STATUS, VENDOR_REQUEST_STATUS } from '../constants'
 
 /** Formulaire connexion / inscription / mot de passe oublié (email + Google),
  * partagé entre la page Profil et l'écran de connexion requise (AuthGate). */
@@ -23,7 +28,26 @@ export function AuthForm() {
         await signInWithEmailAndPassword(auth, form.email, form.password)
         showToast('Connecté !', 'success')
       } else {
-        await createUserWithEmailAndPassword(auth, form.email, form.password)
+        // 1. On crée le compte avec email et mot de passe
+        const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password)
+        
+        // 2. On attache le nom entré dans le formulaire au profil Firebase
+        if (form.name) {
+          await updateProfile(userCredential.user, {
+            displayName: form.name
+          })
+        }
+
+        // 3. On force l'enregistrement du nom dans Firestore pour que l'AppContext le trouve
+        // Le { merge: true } est magique : il fusionne ces infos sans écraser ce que l'AppContext aurait pu créer entre temps
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          displayName: form.name,
+          email: form.email,
+          role: ROLES.CLIENT,
+          status: USER_STATUS.ACTIVE,
+          vendorRequestStatus: VENDOR_REQUEST_STATUS.NONE
+        }, { merge: true })
+
         showToast('Compte créé !', 'success')
       }
     } catch (err) {
@@ -89,12 +113,12 @@ export function AuthForm() {
       <form onSubmit={handleAuth} className="flex flex-col gap-3">
         {authMode === 'register' && (
           <input className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)]"
-            placeholder="Nom complet" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+            placeholder="Nom complet" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required={authMode === 'register'} />
         )}
         <input type="email" className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)]"
-          placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+          placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
         <input type="password" className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)]"
-          placeholder="Mot de passe" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+          placeholder="Mot de passe" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required />
         {authMode === 'login' && (
           <button type="button" onClick={() => setAuthMode('reset')}
             className="self-end text-xs font-semibold text-[var(--primary)] -mt-1">
@@ -112,7 +136,7 @@ export function AuthForm() {
         <div className="flex-1 h-px bg-[var(--border)]" />
       </div>
 
-      <button onClick={handleGoogle}
+      <button onClick={handleGoogle} type="button"
         className="flex items-center justify-center gap-3 border-2 border-[var(--border)] rounded-xl py-3 font-semibold text-sm">
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

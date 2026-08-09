@@ -6,7 +6,7 @@ import { Header } from '../ui/Header'
 import { AuthForm } from './AuthForm'
 
 export function PageProfil() {
-  const { user, userDoc, showToast, logout } = useApp()
+  const { user, showToast, logout } = useApp()
 
   const handleLogout = async () => {
     await logout()
@@ -22,10 +22,6 @@ export function PageProfil() {
     </motion.div>
   )
 
-  // Utiliser d'abord le displayName stocké dans Firestore, puis celui de l'auth, puis un fallback
-  const displayName = userDoc?.displayName || user?.displayName || 'Utilisateur'
-  const firstLetter = displayName[0]?.toUpperCase() || '?'
-
   return (
     <motion.div {...fadeUp} key="profil-user">
       <Header title="profil" />
@@ -34,10 +30,10 @@ export function PageProfil() {
         <div className="card p-5 flex flex-col items-center gap-3 text-center">
           <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white"
             style={{ background: 'linear-gradient(135deg, var(--primary), #f5a623)' }}>
-            {firstLetter}
+            {(user.displayName || user.email || '?')[0].toUpperCase()}
           </div>
           <div>
-            <p className="font-heading font-bold text-lg">{displayName}</p>
+            <p className="font-heading font-bold text-lg">{user.displayName || 'Utilisateur'}</p>
             <p className="text-sm text-[var(--muted-fg)]">{user.email}</p>
           </div>
         </div>
