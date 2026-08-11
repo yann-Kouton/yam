@@ -3,18 +3,98 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, User, Store, Package, LogOut, ChevronRight,
   Phone, FileText, Tag, CheckCircle2, Clock, XCircle, ChevronDown, Download,
+  MapPin, Banknote,
 } from 'lucide-react'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc, where } from 'firebase/firestore'
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail,
 } from 'firebase/auth'
 import { useApp } from '../context/AppContext'
-import { VENDOR_REQUEST_STATUS } from '../constants'
+import { VENDOR_REQUEST_STATUS, ORDER_STATUS } from '../constants'
 import { auth, db } from '../lib/firebase'
 import { notifyAdmins } from '../lib/notifications'
 import { usePwaInstall } from '../hooks/usePwaInstall'
+import { useFirestoreCollection } from '../hooks/useFirestoreCollection'
 import { StatusPill } from './StatusPill'
+import { BottomSheet } from './BottomSheet'
+
+const PAYMENT_LABELS = {
+  orange: 'Orange Money',
+  mtn: 'MTN Mobile Money',
+  moov: 'Moov Money',
+  wave: 'Wave',
+  cash: 'Paiement à la livraison',
+}
+
+function formatOrderDate(ts, opts) {
+  if (!ts?.toDate) return '—'
+  return ts.toDate().toLocaleString('fr-FR', opts)
+}
+
+// ── Détail d'une commande (BottomSheet) ───────────────────
+function OrderDetailSheet({ order, onClose }) {
+  const items = order?.items || []
+  const itemsTotal = items.reduce((s, i) => s + i.price * i.qty, 0)
+
+  return (
+    <BottomSheet
+      open={!!order}
+      onClose={onClose}
+      title={order ? `Commande #${order.id.slice(0, 8).toUpperCase()}` : ''}
+    >
+      {order && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs" style={{ color: 'var(--muted-fg)' }}>
+              {formatOrderDate(order.createdAt, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <StatusPill status={order.status} />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--muted-fg)' }}>Articles</p>
+            {items.map((i, idx) => (
+              <div key={idx} className="flex justify-between text-sm">
+                <span>{i.qty}× {i.name}</span>
+                <span className="font-semibold">{(i.price * i.qty).toLocaleString()} F</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-1.5 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="flex justify-between text-xs" style={{ color: 'var(--muted-fg)' }}>
+              <span>Sous-total</span><span>{itemsTotal.toLocaleString()} F</span>
+            </div>
+            <div className="flex justify-between text-xs" style={{ color: 'var(--muted-fg)' }}>
+              <span>Livraison</span><span>{(order.deliveryFee || 0).toLocaleString()} F</span>
+            </div>
+            <div className="flex justify-between text-sm font-bold pt-1">
+              <span>Total</span>
+              <span style={{ color: 'var(--primary)' }}>{(order.total || 0).toLocaleString()} FCFA</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--muted-fg)' }}>Livraison</p>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--muted-fg)' }} />
+              <span>{order.zone}{order.address ? ` — ${order.address}` : ''}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--muted-fg)' }} />
+              <span>{order.phone || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Banknote className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--muted-fg)' }} />
+              <span>{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod || '—'}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </BottomSheet>
+  )
+}
 
 // ── Formulaire Devenir Vendeur ────────────────────────────
 function VendorForm({ onClose }) {
@@ -146,15 +226,30 @@ function VendorForm({ onClose }) {
 }
 
 // ── Section Mes Commandes ─────────────────────────────────
+const COMMANDES_TABS = [
+  { id: 'encours', label: 'En cours', statuses: [ORDER_STATUS.PENDING, ORDER_STATUS.CONFIRMED, ORDER_STATUS.READY] },
+  { id: 'livre',   label: 'Livrée',   statuses: [ORDER_STATUS.DELIVERED] },
+  { id: 'annule',  label: 'Annulée',  statuses: [ORDER_STATUS.CANCELLED] },
+]
+
 function MesCommandes() {
+  const { user } = useApp()
   const [tab, setTab] = useState('encours')
   const [open, setOpen] = useState(false)
+  const [selected, setSelected] = useState(null)
 
-  const tabs = [
-    { id: 'encours', label: 'En cours' },
-    { id: 'livre',   label: 'Livrée' },
-    { id: 'annule',  label: 'Annulée' },
-  ]
+  const { data: orders, loading } = useFirestoreCollection(
+    'orders', user ? [where('userId', '==', user.uid)] : []
+  )
+
+  const sorted = [...orders].sort((a, b) => {
+    const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0
+    const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0
+    return tb - ta
+  })
+
+  const activeTab = COMMANDES_TABS.find(t => t.id === tab)
+  const filtered = sorted.filter(o => activeTab.statuses.includes(o.status))
 
   return (
     <div className="flex flex-col gap-2">
@@ -181,7 +276,7 @@ function MesCommandes() {
             <div className="px-2 pb-2 flex flex-col gap-2">
               {/* Tabs statuts */}
               <div className="flex bg-[var(--muted)] rounded-xl p-1 gap-1">
-                {tabs.map(t => (
+                {COMMANDES_TABS.map(t => (
                   <button key={t.id} onClick={() => setTab(t.id)}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       tab === t.id ? 'bg-white shadow text-gray-900' : 'text-gray-400'
@@ -191,17 +286,57 @@ function MesCommandes() {
                 ))}
               </div>
 
-              {/* Contenu vide — prêt pour intégration Firestore */}
-              <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <Package className="w-8 h-8" style={{ color: 'var(--border)' }} />
-                <p className="text-xs font-semibold" style={{ color: 'var(--muted-fg)' }}>
-                  Aucune commande {tabs.find(t => t.id === tab)?.label.toLowerCase()}
-                </p>
-              </div>
+              {loading ? (
+                <div className="flex flex-col gap-2 py-1">
+                  {[0, 1].map(i => (
+                    <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: 'var(--muted)' }} />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-6 text-center">
+                  <Package className="w-8 h-8" style={{ color: 'var(--border)' }} />
+                  <p className="text-xs font-semibold" style={{ color: 'var(--muted-fg)' }}>
+                    Aucune commande {activeTab.label.toLowerCase()}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {filtered.map(o => {
+                    const itemCount = (o.items || []).reduce((s, i) => s + i.qty, 0)
+                    const dateLabel = formatOrderDate(o.createdAt, { day: '2-digit', month: 'short' })
+                    return (
+                      <button
+                        key={o.id}
+                        onClick={() => setSelected(o)}
+                        className="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl border"
+                        style={{ borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs font-bold">#{o.id.slice(0, 8).toUpperCase()}</p>
+                            <StatusPill status={o.status} />
+                          </div>
+                          <p className="text-[.7rem] mt-1" style={{ color: 'var(--muted-fg)' }}>
+                            {itemCount} article{itemCount > 1 ? 's' : ''} · {dateLabel}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-xs font-bold" style={{ color: 'var(--primary)' }}>
+                            {(o.total || 0).toLocaleString()} F
+                          </span>
+                          <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--border)' }} />
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <OrderDetailSheet order={selected} onClose={() => setSelected(null)} />
     </div>
   )
 }
