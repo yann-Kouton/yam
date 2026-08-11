@@ -5,14 +5,15 @@ import { addDoc, updateDoc, deleteDoc, doc, collection, serverTimestamp } from '
 import { Plus, Pencil, Trash2, Leaf } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { useFirestoreCollection } from '../hooks/useFirestoreCollection'
-import { db } from '../lib/firebase'
+import { db, cloudImg } from '../lib/firebase'
 import { fadeUp } from '../constants'
 import { Header } from '../ui/Header'
 import { RowListSkeleton } from '../ui/Skeleton'
 import { EmptyState } from '../ui/EmptyState'
 import { BottomSheet } from '../ui/BottomSheet'
+import { ImageUploadField } from '../ui/ImageUploadField'
 
-const EMPTY_FORM = { vendorType:'', zone:'', originalPrice:'', surplusPrice:'', remainingCount:5, pickupStart:'18:00', pickupEnd:'20:00', description:'', imageUrl:'' }
+const EMPTY_FORM = { vendorType:'', zone:'', originalPrice:'', surplusPrice:'', remainingCount:5, pickupStart:'18:00', pickupEnd:'20:00', description:'', imageUrl:'', cloudinaryId:'' }
 
 export function VendorSurplus() {
   const { user, userDoc, showToast } = useApp()
@@ -26,7 +27,7 @@ export function VendorSurplus() {
   const openEdit = (d) => { setEditing(d); setForm({
     vendorType: d.vendorType||'', zone: d.zone||'', originalPrice: d.originalPrice||'', surplusPrice: d.surplusPrice||'',
     remainingCount: d.remainingCount||5, pickupStart: d.pickupStart||'18:00', pickupEnd: d.pickupEnd||'20:00',
-    description: d.description||'', imageUrl: d.imageUrl||'',
+    description: d.description||'', imageUrl: d.imageUrl||'', cloudinaryId: d.cloudinaryId||'',
   }); setSheetOpen(true) }
 
   const save = async () => {
@@ -83,6 +84,7 @@ export function VendorSurplus() {
           <div className="flex flex-col gap-3">
             {myDeals.map(d => (
               <div key={d.id} className="card p-3 flex items-center gap-3">
+                <img src={d.cloudinaryId ? cloudImg(d.cloudinaryId, 'w_128,q_auto,f_auto') : (d.imageUrl || 'https://placehold.co/64x64/E8F7EF/2FA761?text=S')} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" alt={d.zone} />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{d.zone} · -{d.discount}%</p>
                   <p className="text-xs text-[var(--muted-fg)]">{Number(d.surplusPrice).toLocaleString()} FCFA · {d.remainingCount} restants</p>
@@ -116,8 +118,14 @@ export function VendorSurplus() {
           </div>
           <input type="number" className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)]"
             placeholder="Quantité disponible" value={form.remainingCount} onChange={e => setForm({...form, remainingCount:e.target.value})} />
-          <input className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)]"
-            placeholder="URL de l'image" value={form.imageUrl} onChange={e => setForm({...form, imageUrl:e.target.value})} />
+          <ImageUploadField
+            label="Photo de l'offre"
+            cloudinaryId={form.cloudinaryId}
+            imageUrl={form.imageUrl}
+            folder="yamarche/surplus"
+            onUploaded={(publicId) => setForm({ ...form, cloudinaryId: publicId, imageUrl: '' })}
+            onRemove={() => setForm({ ...form, cloudinaryId: '', imageUrl: '' })}
+          />
           <textarea className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)] resize-none"
             placeholder="Description" rows={2} value={form.description} onChange={e => setForm({...form, description:e.target.value})} />
           <button onClick={save} disabled={saving} className="btn-primary btn-secondary disabled:opacity-70">

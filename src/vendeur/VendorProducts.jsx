@@ -5,16 +5,17 @@ import { addDoc, updateDoc, deleteDoc, doc, collection, serverTimestamp } from '
 import { Plus, Pencil, Trash2, Package } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { useFirestoreCollection } from '../hooks/useFirestoreCollection'
-import { db } from '../lib/firebase'
+import { db, cloudImg } from '../lib/firebase'
 import { fadeUp, PRODUCT_STATUS } from '../constants'
 import { Header } from '../ui/Header'
 import { RowListSkeleton } from '../ui/Skeleton'
 import { EmptyState } from '../ui/EmptyState'
 import { StatusPill } from '../ui/StatusPill'
 import { BottomSheet } from '../ui/BottomSheet'
+import { ImageUploadField } from '../ui/ImageUploadField'
 
 const CATEGORIES = ['Légumes','Fruits','Viandes','Poissons','Céréales','Épices','Boissons','Produits laitiers','Tubercules','Huiles']
-const EMPTY_FORM = { name:'', price:'', unit:'kg', category: CATEGORIES[0], description:'', imageUrl:'' }
+const EMPTY_FORM = { name:'', price:'', unit:'kg', category: CATEGORIES[0], description:'', imageUrl:'', cloudinaryId:'' }
 
 export function VendorProducts() {
   const { user, userDoc, showToast } = useApp()
@@ -25,7 +26,7 @@ export function VendorProducts() {
   const [saving, setSaving] = useState(false)
 
   const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setSheetOpen(true) }
-  const openEdit = (p) => { setEditing(p); setForm({ name:p.name||'', price:p.price||'', unit:p.unit||'kg', category:p.category||CATEGORIES[0], description:p.description||'', imageUrl:p.imageUrl||'' }); setSheetOpen(true) }
+  const openEdit = (p) => { setEditing(p); setForm({ name:p.name||'', price:p.price||'', unit:p.unit||'kg', category:p.category||CATEGORIES[0], description:p.description||'', imageUrl:p.imageUrl||'', cloudinaryId:p.cloudinaryId||'' }); setSheetOpen(true) }
 
   const save = async () => {
     if (!form.name || !form.price) { showToast('Nom et prix requis', 'warning'); return }
@@ -76,7 +77,7 @@ export function VendorProducts() {
           <div className="flex flex-col gap-3">
             {myProducts.map(p => (
               <div key={p.id} className="card p-3 flex items-center gap-3">
-                <img src={p.imageUrl || 'https://placehold.co/64x64/F9F4ED/E77E23?text=P'} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" alt={p.name} />
+                <img src={p.cloudinaryId ? cloudImg(p.cloudinaryId, 'w_128,q_auto,f_auto') : (p.imageUrl || 'https://placehold.co/64x64/F9F4ED/E77E23?text=P')} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" alt={p.name} />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{p.name}</p>
                   <p className="text-xs text-[var(--muted-fg)]">{Number(p.price).toLocaleString()} FCFA / {p.unit}</p>
@@ -108,8 +109,14 @@ export function VendorProducts() {
           <select className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none" value={form.category} onChange={e => setForm({...form, category:e.target.value})}>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)]"
-            placeholder="URL de l'image" value={form.imageUrl} onChange={e => setForm({...form, imageUrl:e.target.value})} />
+          <ImageUploadField
+            label="Photo du produit"
+            cloudinaryId={form.cloudinaryId}
+            imageUrl={form.imageUrl}
+            folder="yamarche/products"
+            onUploaded={(publicId) => setForm({ ...form, cloudinaryId: publicId, imageUrl: '' })}
+            onRemove={() => setForm({ ...form, cloudinaryId: '', imageUrl: '' })}
+          />
           <textarea className="border border-[var(--border)] rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary)] resize-none"
             placeholder="Description" rows={3} value={form.description} onChange={e => setForm({...form, description:e.target.value})} />
           <p className="text-xs text-[var(--muted-fg)]">Chaque ajout ou modification repasse par une validation admin avant d'être visible des clients.</p>

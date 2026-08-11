@@ -32,6 +32,25 @@ const firebaseConfig = {
 export const CLOUDINARY_CLOUD = 'ton_cloud_name'
 ```
 
+### Upload direct d'images (vendeurs)
+
+Les formulaires "produit" et "offre surplus" permettent aux vendeurs de
+téléverser une photo directement (au lieu de coller une URL). Cet upload se
+fait côté navigateur, sans backend, via un **upload preset non signé**
+Cloudinary :
+
+1. Dashboard Cloudinary → **Settings → Upload → Upload presets → Add upload preset**
+2. **Signing Mode : Unsigned**
+3. (optionnel) restreindre les formats, la taille, ou activer la modération
+4. Copier le nom du preset dans `.env.local` :
+
+```
+VITE_CLOUDINARY_UPLOAD_PRESET=ton_preset_unsigned
+```
+
+Sans ce preset, l'upload échoue avec un message d'erreur explicite dans
+l'app (le champ "URL de l'image" en fallback texte a été retiré).
+
 ## Déployer les règles de sécurité Firestore
 
 Le fichier `firestore.rules` (à la racine) définit qui peut lire/écrire quoi.
